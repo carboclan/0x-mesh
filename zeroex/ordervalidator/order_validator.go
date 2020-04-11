@@ -240,6 +240,7 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
+	marketContractProxy          *wrappers.MarketContractProxyCaller
 }
 
 // New instantiates a new order validator
@@ -256,6 +257,10 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 	if err != nil {
 		return nil, err
 	}
+	marketContractProxy, err := wrappers.NewMarketContractProxyCaller(contractAddresses.MarketContractProxy, contractCaller)
+	if err != nil {
+		return nil, err
+	}
 	assetDataDecoder := zeroex.NewAssetDataDecoder()
 
 	return &OrderValidator{
@@ -267,6 +272,7 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
+		marketContractProxy:          marketContractProxy,
 	}, nil
 }
 
@@ -388,9 +394,34 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					continue
 				}
 
+				////////////////////////////////////////
+				// Start: Honeylemon fillable amounts //
+				////////////////////////////////////////
+
+				// Get unique maker addresses
+				fillableAmountsMap := make(map[common.Address]*big.Int)
+				for _, order := range signedOrders {
+					fillableAmountsMap[order.MakerAddress] = big.NewInt(1)
+				}
+				addresses := make([]common.Address, len(fillableAmountsMap))
+				i := 0
+				for a := range fillableAmountsMap {
+					addresses[i] = a
+					i++
+				}
+
+				fillableAmounts, err := o.marketContractProxy.GetFillableAmounts(opts, addresses)
+				// TODO: handle errors
+				for i, address := range addresses {
+					fillableAmountsMap[address] = fillableAmounts[i]
+				}
+
+				//////////////////////////////////////
+				// End: Honeylemon fillable amounts //
+				//////////////////////////////////////
+
 				for j, orderInfo := range results.OrdersInfo {
 					isValidSignature := results.IsValidSignature[j]
-					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[j]
 					orderStatus := zeroex.OrderStatus(orderInfo.OrderStatus)
@@ -419,6 +450,8 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 						continue
 					case zeroex.OSFillable:
 						remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
+						fillableTakerAssetAmount := math.BigMin(remainingTakerAssetAmount, fillableAmountsMap[signedOrder.MakerAddress])
+
 						// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 						// partially fillable orders as invalid
 						if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
@@ -781,7 +814,7 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
 		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
-			return false
+			// return false
 		}
 	default:
 		return false
