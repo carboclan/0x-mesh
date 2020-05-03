@@ -399,21 +399,21 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 				////////////////////////////////////////
 
 				// Get unique maker addresses
-				fillableAmountsMap := make(map[common.Address]*big.Int)
+				fillableMakerAmountsMap := make(map[common.Address]*big.Int)
 				for _, order := range signedOrders {
-					fillableAmountsMap[order.MakerAddress] = big.NewInt(1)
+					fillableMakerAmountsMap[order.MakerAddress] = big.NewInt(1)
 				}
-				addresses := make([]common.Address, len(fillableAmountsMap))
+				addresses := make([]common.Address, len(fillableMakerAmountsMap))
 				i := 0
-				for a := range fillableAmountsMap {
+				for a := range fillableMakerAmountsMap {
 					addresses[i] = a
 					i++
 				}
 
-				fillableAmounts, err := o.marketContractProxy.GetFillableAmounts(opts, addresses)
+				fillableMakerAmounts, err := o.marketContractProxy.GetFillableAmounts(opts, addresses)
 				// TODO: handle errors
 				for i, address := range addresses {
-					fillableAmountsMap[address] = fillableAmounts[i]
+					fillableMakerAmountsMap[address] = fillableMakerAmounts[i]
 				}
 
 				//////////////////////////////////////
@@ -450,7 +450,10 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 						continue
 					case zeroex.OSFillable:
 						remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
-						fillableTakerAssetAmount := math.BigMin(remainingTakerAssetAmount, fillableAmountsMap[signedOrder.MakerAddress])
+						fillableMakerAssetAmount := fillableMakerAmountsMap[signedOrder.MakerAddress]
+						fillableTakerAssetAmount := new(big.Int).Mul(fillableMakerAssetAmount, signedOrder.TakerAssetAmount)
+						fillableTakerAssetAmount.Div(fillableTakerAssetAmount, signedOrder.MakerAssetAmount)
+						fillableTakerAssetAmount = math.BigMin(remainingTakerAssetAmount, fillableTakerAssetAmount)
 
 						// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 						// partially fillable orders as invalid
