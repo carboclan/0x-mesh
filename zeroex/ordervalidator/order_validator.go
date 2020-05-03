@@ -388,6 +388,32 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 					continue
 				}
 
+				////////////////////////////////////////
+				// Start: Honeylemon fillable amounts //
+				////////////////////////////////////////
+
+				// Get unique maker addresses
+				fillableMakerAmountsMap := make(map[common.Address]*big.Int)
+				for _, order := range signedOrders {
+					fillableMakerAmountsMap[order.MakerAddress] = big.NewInt(1)
+				}
+				addresses := make([]common.Address, len(fillableMakerAmountsMap))
+				i := 0
+				for a := range fillableMakerAmountsMap {
+					addresses[i] = a
+					i++
+				}
+
+				fillableMakerAmounts, err := o.marketContractProxy.GetFillableAmounts(opts, addresses)
+				// TODO: handle errors
+				for i, address := range addresses {
+					fillableMakerAmountsMap[address] = fillableMakerAmounts[i]
+				}
+
+				//////////////////////////////////////
+				// End: Honeylemon fillable amounts //
+				//////////////////////////////////////
+
 				for j, orderInfo := range results.OrdersInfo {
 					isValidSignature := results.IsValidSignature[j]
 					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
@@ -419,6 +445,11 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 						continue
 					case zeroex.OSFillable:
 						remainingTakerAssetAmount := big.NewInt(0).Sub(signedOrder.TakerAssetAmount, orderInfo.OrderTakerAssetFilledAmount)
+						fillableMakerAssetAmount := fillableMakerAmountsMap[signedOrder.MakerAddress]
+						fillableTakerAssetAmount := new(big.Int).Mul(fillableMakerAssetAmount, signedOrder.TakerAssetAmount)
+						fillableTakerAssetAmount.Div(fillableTakerAssetAmount, signedOrder.MakerAssetAmount)
+						fillableTakerAssetAmount = math.BigMin(remainingTakerAssetAmount, fillableTakerAssetAmount)
+
 						// If `fillableTakerAssetAmount` != `remainingTakerAssetAmount`, the order is partially fillable. We consider
 						// partially fillable orders as invalid
 						if fillableTakerAssetAmount.Cmp(remainingTakerAssetAmount) != 0 {
