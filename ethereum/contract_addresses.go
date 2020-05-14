@@ -21,7 +21,6 @@ type ContractAddresses struct {
 	ChaiBridge          common.Address `json:"chaiBridge"`
 	ChaiToken           common.Address `json:"chaiToken"`
 	MaximumGasPrice     common.Address `json:"maximumGasPrice"`
-	MarketContractProxy common.Address `json:"marketContractProxy"`
 }
 
 // GanacheAddresses The addresses that the 0x contracts were deployed to on the Ganache snapshot (chainID = 1337).
@@ -44,7 +43,6 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ChaiBridge:          common.HexToAddress("0x77c31eba23043b9a72d13470f3a3a311344d7438"),
 			ChaiToken:           common.HexToAddress("0x06af07097c9eeb7fd685c692751d5c66db49c215"),
 			MaximumGasPrice:     common.HexToAddress("0xe2bfd35306495d11e3c9db0d8de390cda24563cf"),
-			MarketContractProxy: common.HexToAddress(""),
 		}, nil
 	case 3:
 		return ContractAddresses{
@@ -60,7 +58,6 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			MaximumGasPrice:     common.HexToAddress("0x407b4128e9ecad8769b2332312a9f655cb9f5f3a"),
-			MarketContractProxy: common.HexToAddress(""),
 		}, nil
 	case 4:
 		return ContractAddresses{
@@ -76,7 +73,6 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			MaximumGasPrice:     common.HexToAddress("0x47697b44bd89051e93b4d5857ba8e024800a74ac"),
-			MarketContractProxy: common.HexToAddress(""),
 		}, nil
 	case 42:
 		return ContractAddresses{
@@ -92,7 +88,6 @@ func NewContractAddressesForChainID(chainID int) (ContractAddresses, error) {
 			ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
 			MaximumGasPrice:     common.HexToAddress("0x67a094cf028221ffdd93fc658f963151d05e2a74"),
-			MarketContractProxy: common.HexToAddress("0x041ed9bbDaB5b7d1aB7c67Afbc8B06329840fDf4"),
 		}, nil
 	case 1337:
 		return ganacheAddresses(), nil
@@ -143,6 +138,5 @@ func ganacheAddresses() ContractAddresses {
 		ChaiBridge:          common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		ChaiToken:           common.HexToAddress("0x0000000000000000000000000000000000000000"),
 		MaximumGasPrice:     common.HexToAddress("0x2c530e4ecc573f11bd72cf5fdf580d134d25f15f"),
-		MarketContractProxy: common.HexToAddress("0x45B3A72221E571017C0f0ec42189E11d149D0ACE"),
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -257,7 +258,12 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 	if err != nil {
 		return nil, err
 	}
-	marketContractProxy, err := wrappers.NewMarketContractProxyCaller(contractAddresses.MarketContractProxy, contractCaller)
+	// Initialize Honeylemon MarketContractProxy
+	honeylemonMarketContractProxyAddress := os.Getenv("HONEYLEMON_MARKET_CONTARCT_PROXY_ADDRESS")
+	if len(honeylemonMarketContractProxyAddress) == 0 {
+		return nil, errors.New("Envar HONEYLEMON_MARKET_CONTARCT_PROXY_ADDRESS is empty")
+	}
+	marketContractProxy, err := wrappers.NewMarketContractProxyCaller(common.HexToAddress(honeylemonMarketContractProxyAddress), contractCaller)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +417,22 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 				}
 
 				fillableMakerAmounts, err := o.marketContractProxy.GetFillableAmounts(opts, addresses)
-				// TODO: handle errors
+				if err != nil {
+					log.Error("Could not fetch fillable amount from MarketContractProxy")
+					// Reject all orders
+					for j, orderInfo := range results.OrdersInfo {
+						orderHash := common.Hash(orderInfo.OrderHash)
+						signedOrder := signedOrders[j]
+						validationResults.Rejected = append(validationResults.Rejected, &RejectedOrderInfo{
+							OrderHash:   orderHash,
+							SignedOrder: signedOrder,
+							Kind:        MeshError,
+							Status:      ROEthRPCRequestFailed,
+						})
+					}
+					return
+				}
+
 				for i, address := range addresses {
 					fillableMakerAmountsMap[address] = fillableMakerAmounts[i]
 				}

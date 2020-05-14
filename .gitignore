@@ -20,3 +20,4 @@ integration-tests/data/standalone-*/
 integration-tests/data/bootstrap-0/p2p/
 .env.local
 .env.*
+mesh
