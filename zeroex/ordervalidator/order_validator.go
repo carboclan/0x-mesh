@@ -241,6 +241,7 @@ type OrderValidator struct {
 	chainID                      int
 	cachedFeeRecipientToEndpoint map[common.Address]string
 	contractAddresses            ethereum.ContractAddresses
+	marketContractProxy          *wrappers.MarketContractProxyCaller
 }
 
 // New instantiates a new order validator
@@ -277,6 +278,7 @@ func New(contractCaller bind.ContractCaller, chainID int, maxRequestContentLengt
 		chainID:                      chainID,
 		cachedFeeRecipientToEndpoint: map[common.Address]string{},
 		contractAddresses:            contractAddresses,
+		marketContractProxy:          marketContractProxy,
 	}, nil
 }
 
@@ -441,7 +443,6 @@ func (o *OrderValidator) BatchValidate(ctx context.Context, rawSignedOrders []*z
 
 				for j, orderInfo := range results.OrdersInfo {
 					isValidSignature := results.IsValidSignature[j]
-					fillableTakerAssetAmount := results.FillableTakerAssetAmounts[j]
 					orderHash := common.Hash(orderInfo.OrderHash)
 					signedOrder := signedOrders[j]
 					orderStatus := zeroex.OrderStatus(orderInfo.OrderStatus)
@@ -837,7 +838,7 @@ func (o *OrderValidator) isSupportedAssetData(assetData []byte) bool {
 		// Chai bridge. If the ChaiBridge is not deployed on the selected network
 		// we also reject the ERC20Bridge asset.
 		if o.contractAddresses.ChaiBridge == constants.NullAddress || decodedAssetData.BridgeAddress != o.contractAddresses.ChaiBridge {
-			return false
+			// return false
 		}
 	default:
 		return false

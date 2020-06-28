@@ -1743,6 +1743,14 @@ func (w *Watcher) addAssetDataAddressToEventDecoder(assetData []byte) error {
 				return err
 			}
 		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.eventDecoder.AddKnownERC20(decodedAssetData.TokenAddress)
+		w.contractAddressToSeenCount[decodedAssetData.TokenAddress] = w.contractAddressToSeenCount[decodedAssetData.TokenAddress] + 1
 	default:
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
