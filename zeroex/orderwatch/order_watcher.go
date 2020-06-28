@@ -1809,6 +1809,16 @@ func (w *Watcher) removeAssetDataAddressFromEventDecoder(assetData []byte) error
 				return err
 			}
 		}
+	case "ERC20Bridge":
+		var decodedAssetData zeroex.ERC20BridgeAssetData
+		err := w.assetDataDecoder.Decode(assetData, &decodedAssetData)
+		if err != nil {
+			return err
+		}
+		w.contractAddressToSeenCount[decodedAssetData.TokenAddress] = w.contractAddressToSeenCount[decodedAssetData.TokenAddress] - 1
+		if w.contractAddressToSeenCount[decodedAssetData.TokenAddress] == 0 {
+			w.eventDecoder.RemoveKnownERC20(decodedAssetData.TokenAddress)
+		}
 	default:
 		return fmt.Errorf("unrecognized assetData type name found: %s", assetDataName)
 	}
